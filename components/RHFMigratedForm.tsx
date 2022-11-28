@@ -44,7 +44,7 @@ class FormStore {
 // for the sake of a simpler example
 const formStore = new FormStore();
 
-const GradualRHFMobx = observer(() => {
+const RHFMigratedForm = observer(() => {
   const { register, formState: { errors }, handleSubmit } = useForm<RHFFormState>({
     mode: 'onBlur',
     reValidateMode: 'onBlur'
@@ -90,4 +90,4 @@ const GradualRHFMobx = observer(() => {
   );
 })
 
-export default GradualRHFMobx;
+export default RHFMigratedForm;
