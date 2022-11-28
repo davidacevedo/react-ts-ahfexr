@@ -6,7 +6,7 @@
  * 3. The form will submit the form data as a JSON object, which is depicted by console.log
  * 
  * The goal is to move this to use `react-hook-form` (RHF)
- */ 
+*/ 
 import * as React from 'react';
 import {
   Button,
