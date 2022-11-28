@@ -1,3 +1,12 @@
+/**
+ * MobX Form is a Form with 2 inputs which are both handled by MobX state management.
+ * 1. Form state will be handled by the MobX store `FormStore`
+ * 2. Each input will have a validation of needing at least 1 character, but first name
+ * will also have the requirement of not being longer than 5 characters.
+ * 3. The form will submit the form data as a JSON object, which is depicted by console.log
+ * 
+ * The goal is to move this to use `react-hook-form` (RHF)
+ */ 
 import * as React from 'react';
 import {
   Button,
@@ -8,98 +17,54 @@ import {
   FormRow,
   Form,
 } from '@appfolio/react-gears';
-import { useForm } from 'react-hook-form';
-import { refToInnerRef } from '../utils';
 import { makeAutoObservable } from 'mobx';
 import { observer } from 'mobx-react'
+import { useForm, UseFormRegisterReturn } from 'react-hook-form';
 
-interface FormFields {
-  firstName: string;
+// Wondering what refToInnerRef is? Check out https://backstage.qa.appfolio.com/docs/default/resource/front-end-all/react-hook-form/react-hook-form-caveats-with-react-gears/#react-hook-form-and-ref
+const refToInnerRef = ({ ref, ...rest }: UseFormRegisterReturn) => ({ ...rest, innerRef: ref });
+
+interface MobXFormState {
   lastName: string;
+};
+
+interface RHFFormState {
+  firstName: string;
+};
+ 
+interface MobXFormStateError {
+  lastName: false | string;
 }
 
-export default function ValidationExamples({ submit }: any) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormFields>({
-    mode: 'onBlur',
-    reValidateMode: 'onBlur'
-  });
-  
-  const onSubmit = (data: FormFields) => {
-    submit(data)
-  };
-
-  return (
-    <div>
-      <Card className="mb-3">
-        <CardHeader className="bg-info">
-          <CardTitle>Form with Validations onBlur</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <Form onSubmit={handleSubmit(onSubmit)}>
-            <FormRow
-              label="First name"
-              feedback={errors.firstName?.message}
-              {...refToInnerRef(register('firstName', {
-                required: 'first name needed',
-                validate: {
-                  custom1: (val) => val.length > 5 || 'not greater than 5'
-                }
-              }))}
-            />
-            <FormRow
-              label="Last name"
-              feedback={errors.lastName?.message}
-              {...refToInnerRef(register('lastName', { required: 'last name needed'}))}
-            />
-            <Button color="primary" type="submit">Submit</Button>
-          </Form>
-        </CardBody>
-      </Card>
-    </div>
-  );
-}
-
-// FormStore will be responsible for keeping track of form state, validating,
-// and submitting after everything has been validated
 class FormStore {
-  firstName = '';
-  lastName = '';
-  isFirstNameError = false;
-  isLastNameError = false;
+  formState: MobXFormState = {
+    lastName: ''
+  }
 
+  formErrorState: MobXFormStateError = {
+    lastName: false,
+  }
+  
   constructor() {
     makeAutoObservable(this);
   }
 
-  setFirstName = (name: string) => {
-    this.firstName = name;
-  }
-
   setLastName = (name: string) => {
-    this.lastName = name;
-  }
-
-  triggerFirstNameValidation = () => {
-    this.isFirstNameError = this.firstName.length > 0 ? false : true;
+    this.formState.lastName = name;
   }
 
   triggerLastNameValidation = () => {
-    this.isLastNameError = this.lastName.length > 0 ? false : true;
+    this.formErrorState.lastName = this.formState.lastName.length > 0
+      ? false
+      : 'last name invalid';
   }
 
-  get firstNameError() {
-    return this.isFirstNameError ? 'first name invalid' : '';
-  }
+  submit = (data: RHFFormState) => {
+    // Don't submit if something is invalid
+    if (this.formErrorState.lastName) return false;
 
-  get lastNameError() {
-    return this.isLastNameError ? 'last name invalid' : '';
-  }
-
-  submit = () => {
-    // Return early if something is not valid
-    if (this.isFirstNameError || this.isLastNameError) return false;
-
-    console.log(`Submitting ${this.firstName} and ${this.lastName}`)
+    const submitData = { ...this.formState, ...data };
+    console.log(`Submitting ${submitData}`)
   }
 }
 
@@ -107,44 +72,50 @@ class FormStore {
 // for the sake of a simpler example
 const formStore = new FormStore();
 
-export const OldFormValidationsExample = observer(() => {
+const GradualRHFMobx = observer(() => {
+  const { register, formState: { errors }, handleSubmit } = useForm<RHFFormState>({
+    mode: 'onBlur',
+    reValidateMode: 'onBlur'
+  });
+
   const {
-    firstName,
-    setFirstName,
-    lastName,
+    formState,
+    formErrorState,
     setLastName,
-    triggerFirstNameValidation,
     triggerLastNameValidation,
-    firstNameError,
-    lastNameError,
   } = formStore;
+  const { lastName } = formState;
   
-  const onSubmit = () => {
-    formStore.submit();
+  // onSubmit for RHF values isn't called if form is invalid
+  const onSubmit = (data: RHFFormState) => {
+    formStore.submit(data);
 
   };
 
   return (
     <div>
       <Card className="mb-3">
-        <CardHeader className="bg-info">
-          <CardTitle>Form with Validations onBlur</CardTitle>
+        <CardHeader>
+          <CardTitle>Gradual Migration to react-hook-form (RHF)</CardTitle>
         </CardHeader>
         <CardBody>
-          <Form onSubmit={onSubmit}>
+          <Form onSubmit={handleSubmit(onSubmit)}>
             <FormRow
               label="First name"
-              name="first"
-              onChange={(e) => setFirstName(e.target.value)}
-              feedback={firstNameError}
-              onBlur={triggerFirstNameValidation}
-              value={firstName}
+              {...refToInnerRef(register('firstName', {
+                required: 'first name invalid',
+                maxLength: {
+                  value: 5,
+                  message: 'firstName must be less than 5 characters or less'
+                }
+              }))}
+              feedback={errors?.firstName?.message}
             />
             <FormRow
               label="Last name"
               name="last"
               onChange={(e) => setLastName(e.target.value)}
-              feedback={lastNameError}
+              feedback={formErrorState.lastName}
               onBlur={triggerLastNameValidation}
               value={lastName}
             />
@@ -155,3 +126,5 @@ export const OldFormValidationsExample = observer(() => {
     </div>
   );
 })
+
+export default GradualRHFMobx;

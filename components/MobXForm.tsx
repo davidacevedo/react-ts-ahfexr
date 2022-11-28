@@ -7,7 +7,6 @@
  * 
  * The goal is to move this to use `react-hook-form` (RHF)
  */ 
-// 
 import * as React from 'react';
 import {
   Button,
@@ -21,23 +20,23 @@ import {
 import { makeAutoObservable } from 'mobx';
 import { observer } from 'mobx-react'
 
-interface FormState {
+interface MobXFormState {
   firstName: string;
   lastName: string;
 }
 
-interface FormStateError {
+interface MobXFormStateError {
   firstName: false | string;
   lastName: false | string;
 }
 
 class FormStore {
-  formState: FormState = {
+  formState: MobXFormState = {
     firstName: '',
     lastName: ''
   }
 
-  formErrorState: FormStateError = {
+  formErrorState: MobXFormStateError = {
     firstName: false,
     lastName: false,
   }
@@ -61,7 +60,7 @@ class FormStore {
     }
 
     if (this.formState.firstName.length > 5) {
-      this.formErrorState.firstName = 'firstName must be less than 5 characters';
+      this.formErrorState.firstName = 'firstName must be less than 5 characters or less';
       return;
     }
 
